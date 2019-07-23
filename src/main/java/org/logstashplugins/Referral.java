@@ -13,6 +13,7 @@ import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.snowplowanalytics.refererparser.CorruptYamlException;
@@ -39,24 +40,33 @@ public class Referral implements Filter {
   @Override
   public Collection<Event> filter(Collection<Event> events, FilterMatchListener matchListener) {
     for (Event e : events) {
-      Object f = e.getField(sourceField);
-      if (f instanceof String) {
-        try {
-          Referer referral = this.refererParser.parse((String) f, "");
-          Map<String, String> map = new HashMap<String, String>();
-          map.put("source", referral.source);
-          map.put("term", referral.term);
-          try {
-            map.put("medium", referral.medium.name().toLowerCase());
-          } catch (Exception ex) {
-            map.put("medium", null);
-          }
+      Object input = e.getField(sourceField);
+      String referrer;
 
-          e.setField("referralParser", map);
-          matchListener.filterMatched(e);
-        } catch (URISyntaxException e1) {
-          e1.printStackTrace();
+      if (input instanceof List) {
+        referrer = (String) ((List) input).get(0);
+
+      } else if (input instanceof String) {
+        referrer = (String) input;
+      } else {
+        throw new IllegalArgumentException("Expected input field value to be String or List type");
+      }
+
+      try {
+        Referer referral = this.refererParser.parse(referrer, "");
+        Map<String, String> map = new HashMap<String, String>();
+        map.put("source", referral.source);
+        map.put("term", referral.term);
+        try {
+          map.put("medium", referral.medium.name().toLowerCase());
+        } catch (Exception ex) {
+          map.put("medium", null);
         }
+
+        e.setField("referralParser", map);
+        matchListener.filterMatched(e);
+      } catch (URISyntaxException e1) {
+        e1.printStackTrace();
       }
     }
     return events;
