@@ -11,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,6 +43,8 @@ public class Referral implements Filter {
   }
 
   private void setEvent(Event e, FilterMatchListener matchListener, String referrer, String hostName) {
+    if (referrer == "" | hostName == "")
+      return;
     try {
       URI hostUri = new URI(hostName);
       Referer referral = this.refererParser.parse(referrer, hostUri.getHost());
@@ -87,8 +90,10 @@ public class Referral implements Filter {
 
   @Override
   public Collection<PluginConfigSpec<?>> configSchema() {
-    // should return a list of all configuration options for this plugin
-    return Collections.singletonList(REFERRER_CONFIG);
+    List<PluginConfigSpec<?>> array = new ArrayList<PluginConfigSpec<?>>();
+    array.add(REFERRER_CONFIG);
+    array.add(SOURCE_CONFIG);
+    return Collections.synchronizedList(array);
   }
 
   @Override
