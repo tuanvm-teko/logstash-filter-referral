@@ -37,37 +37,41 @@ public class Referral implements Filter {
     this.refererParser = new Parser();
   }
 
+  private void setEvent(Event e, FilterMatchListener matchListener, String referrer) {
+    try {
+      Referer referral = this.refererParser.parse(referrer, "");
+      Map<String, String> map = new HashMap<String, String>();
+      map.put("source", referral.source);
+      map.put("term", referral.term);
+      try {
+        map.put("medium", referral.medium.name().toLowerCase());
+      } catch (Exception ex) {
+        map.put("medium", null);
+      }
+
+      e.setField("referralParser", map);
+      matchListener.filterMatched(e);
+    } catch (URISyntaxException e1) {
+      e1.printStackTrace();
+    }
+  }
+
   @Override
   public Collection<Event> filter(Collection<Event> events, FilterMatchListener matchListener) {
     for (Event e : events) {
       Object input = e.getField(sourceField);
-      String referrer;
 
       if (input instanceof List) {
-        referrer = (String) ((List) input).get(0);
-
+        String referrer = (String) ((List) input).get(0);
+        this.setEvent(e, matchListener, referrer);
       } else if (input instanceof String) {
-        referrer = (String) input;
+        String referrer = (String) input;
+        this.setEvent(e, matchListener, referrer);
       } else {
-        throw new IllegalArgumentException("Expected input field value to be String or List type");
+        // throw new IllegalArgumentException("Expected input field value to be String
+        // or List type");
       }
 
-      try {
-        Referer referral = this.refererParser.parse(referrer, "");
-        Map<String, String> map = new HashMap<String, String>();
-        map.put("source", referral.source);
-        map.put("term", referral.term);
-        try {
-          map.put("medium", referral.medium.name().toLowerCase());
-        } catch (Exception ex) {
-          map.put("medium", null);
-        }
-
-        e.setField("referralParser", map);
-        matchListener.filterMatched(e);
-      } catch (URISyntaxException e1) {
-        e1.printStackTrace();
-      }
     }
     return events;
   }
