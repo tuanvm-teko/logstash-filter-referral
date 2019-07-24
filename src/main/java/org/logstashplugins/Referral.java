@@ -9,6 +9,7 @@ import co.elastic.logstash.api.LogstashPlugin;
 import co.elastic.logstash.api.PluginConfigSpec;
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,22 +25,26 @@ import com.snowplowanalytics.refererparser.Referer;
 @LogstashPlugin(name = "referral")
 public class Referral implements Filter {
 
-  public static final PluginConfigSpec<String> SOURCE_CONFIG = PluginConfigSpec.stringSetting("source", "message");
+  public static final PluginConfigSpec<String> REFERRER_CONFIG = PluginConfigSpec.stringSetting("referrer", "message");
+  public static final PluginConfigSpec<String> SOURCE_CONFIG = PluginConfigSpec.stringSetting("host", "message");
 
   private String id;
+  private String referrerField;
   private String sourceField;
   private Parser refererParser;
 
   public Referral(String id, Configuration config, Context context) throws CorruptYamlException {
     // constructors should validate configuration options
     this.id = id;
+    this.referrerField = config.get(REFERRER_CONFIG);
     this.sourceField = config.get(SOURCE_CONFIG);
     this.refererParser = new Parser();
   }
 
-  private void setEvent(Event e, FilterMatchListener matchListener, String referrer) {
+  private void setEvent(Event e, FilterMatchListener matchListener, String referrer, String hostName) {
     try {
-      Referer referral = this.refererParser.parse(referrer, "");
+      URI hostUri = new URI(hostName);
+      Referer referral = this.refererParser.parse(referrer, hostUri.getHost());
       Map<String, String> map = new HashMap<String, String>();
       map.put("source", referral.source);
       map.put("term", referral.term);
@@ -56,20 +61,24 @@ public class Referral implements Filter {
     }
   }
 
+  private String _getValueFromField(Event e, String field) {
+    Object input = e.getField(field);
+    if (input instanceof List) {
+      return (String) ((List) input).get(0);
+    } else if (input instanceof String) {
+      return (String) input;
+    } else {
+      return "";
+    }
+  }
+
   @Override
   public Collection<Event> filter(Collection<Event> events, FilterMatchListener matchListener) {
     for (Event e : events) {
-      Object input = e.getField(sourceField);
-
-      if (input instanceof List) {
-        String referrer = (String) ((List) input).get(0);
-        this.setEvent(e, matchListener, referrer);
-      } else if (input instanceof String) {
-        String referrer = (String) input;
-        this.setEvent(e, matchListener, referrer);
-      } else {
-        // throw new IllegalArgumentException("Expected input field value to be String
-        // or List type");
+      String referrerValue = this._getValueFromField(e, this.referrerField);
+      String sourceValue = this._getValueFromField(e, this.sourceField);
+      if (referrerValue != "" & sourceValue != "") {
+        this.setEvent(e, matchListener, referrerValue, sourceValue);
       }
 
     }
@@ -79,7 +88,7 @@ public class Referral implements Filter {
   @Override
   public Collection<PluginConfigSpec<?>> configSchema() {
     // should return a list of all configuration options for this plugin
-    return Collections.singletonList(SOURCE_CONFIG);
+    return Collections.singletonList(REFERRER_CONFIG);
   }
 
   @Override
