@@ -49,16 +49,26 @@ public class Referral implements Filter {
       URI hostUri = new URI(hostName);
       Referer referral = this.refererParser.parse(referrer, hostUri.getHost());
       Map<String, String> map = new HashMap<String, String>();
-      map.put("source", referral.source);
-      map.put("term", referral.term);
+      if (referral.source != null) {
+        map.put("source", referral.source);
+      }
+      if (referral.term != null) {
+        map.put("term", referral.term);
+      }
       try {
-        map.put("medium", referral.medium.name().toLowerCase());
+        if (referral.medium != null) {
+          map.put("medium", referral.medium.name().toLowerCase());
+        }
       } catch (Exception ex) {
-        map.put("medium", null);
+        ex.printStackTrace();
       }
 
-      e.setField("referralParser", map);
-      matchListener.filterMatched(e);
+      try {
+        e.setField("referralParser", map);
+        matchListener.filterMatched(e);
+      } catch (Exception ex) {
+        ex.printStackTrace();
+      }
     } catch (URISyntaxException e1) {
       e1.printStackTrace();
     }
