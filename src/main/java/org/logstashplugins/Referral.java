@@ -43,11 +43,14 @@ public class Referral implements Filter {
   }
 
   private void setEvent(Event e, FilterMatchListener matchListener, String referrer, String hostName) {
-    if (referrer == "" | hostName == "")
+    if (referrer == "" | hostName == "" | referrer == null | hostName == null)
       return;
     try {
       URI hostUri = new URI(hostName);
       Referer referral = this.refererParser.parse(referrer, hostUri.getHost());
+      if (referral == null)
+        return;
+
       Map<String, String> map = new HashMap<String, String>();
       if (referral.source != null) {
         map.put("source", referral.source);
@@ -90,7 +93,7 @@ public class Referral implements Filter {
     for (Event e : events) {
       String referrerValue = this._getValueFromField(e, this.referrerField);
       String sourceValue = this._getValueFromField(e, this.sourceField);
-      if (referrerValue != "" & sourceValue != "") {
+      if (referrerValue != "" & sourceValue != "" & referrerValue != null & sourceValue != null) {
         this.setEvent(e, matchListener, referrerValue, sourceValue);
       }
 
