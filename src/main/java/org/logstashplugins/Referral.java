@@ -43,18 +43,29 @@ public class Referral implements Filter {
   }
 
   private void setEvent(Event e, FilterMatchListener matchListener, String referrer, String hostName) {
-    if (referrer == "" | hostName == "" | referrer == null | hostName == null)
+    Map<String, String> map = new HashMap<String, String>();
+    map.put("source", "unknown");
+    map.put("medium", "unknown");
+    map.put("term", "unknown");
+
+    if (referrer.equals("") | hostName.equals("")) {
+      e.setField("referralParser", map);
+      matchListener.filterMatched(e);
       return;
+    }
+
     try {
       URI hostUri = new URI(hostName);
       Referer referral = this.refererParser.parse(referrer, hostUri.getHost());
-      if (referral == null)
+      if (referral == null) {
+        e.setField("referralParser", map);
         return;
+      }
 
-      Map<String, String> map = new HashMap<String, String>();
       if (referral.source != null) {
         map.put("source", referral.source);
       }
+
       if (referral.term != null) {
         map.put("term", referral.term);
       }
@@ -66,13 +77,12 @@ public class Referral implements Filter {
         ex.printStackTrace();
       }
 
-      try {
-        e.setField("referralParser", map);
-        matchListener.filterMatched(e);
-      } catch (Exception ex) {
-        ex.printStackTrace();
-      }
+      e.setField("referralParser", map);
+      matchListener.filterMatched(e);
+
     } catch (URISyntaxException e1) {
+      e.setField("referralParser", map);
+      matchListener.filterMatched(e);
       e1.printStackTrace();
     }
   }
@@ -93,9 +103,7 @@ public class Referral implements Filter {
     for (Event e : events) {
       String referrerValue = this._getValueFromField(e, this.referrerField);
       String sourceValue = this._getValueFromField(e, this.sourceField);
-      if (referrerValue != "" & sourceValue != "" & referrerValue != null & sourceValue != null) {
-        this.setEvent(e, matchListener, referrerValue, sourceValue);
-      }
+      this.setEvent(e, matchListener, referrerValue, sourceValue);
 
     }
     return events;
